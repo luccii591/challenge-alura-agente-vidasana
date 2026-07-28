@@ -12,7 +12,14 @@ import streamlit as st
 
 from src.agent import AgenteVidaSana, BaseDeConocimiento
 from src.config import DIRECTORIO_DATOS, NOMBRE_CLINICA
-from src.estilos import AVISO_HTML, PIE_HTML, construir_css, encabezado_html
+from src.estilos import (
+    AVISO_HTML,
+    PIE_HTML,
+    construir_css,
+    encabezado_html,
+    fuentes_html,
+    paso_html,
+)
 from src.prompts import PREGUNTAS_DE_EJEMPLO
 
 st.set_page_config(
@@ -111,6 +118,7 @@ st.markdown(
             (f"{agente.total_fragmentos} fragmentos indexados", True),
             (f"{len(agente.documentos_indexados)} documentos", False),
             ("RAG + function calling", False),
+            ("Respuesta en streaming", False),
             ("Google Gemini", False),
         ],
     ),
@@ -135,17 +143,81 @@ def dibujar_mensaje_usuario(texto: str) -> None:
     )
 
 
+ETIQUETAS_HERRAMIENTA = {
+    "buscar_en_documentos": "Búsqueda semántica en las políticas",
+    "consultar_catalogo": "Consulta estructurada al catálogo",
+    "listar_especialidades": "Lectura del catálogo completo",
+}
+
+
 def dibujar_traza(traza: list[dict]) -> None:
-    """Muestra qué herramienta se usó y qué documentos se citaron."""
+    """Muestra qué herramienta se usó y con qué confianza se citó cada fuente."""
     with st.expander("🔍 Cómo se obtuvo esta respuesta"):
         for indice, paso in enumerate(traza):
-            st.markdown(f"**Herramienta:** `{paso['herramienta']}`")
+            etiqueta = ETIQUETAS_HERRAMIENTA.get(paso["herramienta"], "Herramienta")
+            st.markdown(
+                paso_html(f"<b>{etiqueta}</b> · <code>{paso['herramienta']}</code>"),
+                unsafe_allow_html=True,
+            )
             if paso["argumentos"]:
                 st.json(paso["argumentos"], expanded=False)
-            for fuente in paso["fuentes"]:
-                st.markdown(f"📄 {fuente}")
+            st.markdown(fuentes_html(paso["fuentes"]), unsafe_allow_html=True)
             if indice < len(traza) - 1:
-                st.markdown("---")
+                st.markdown("")
+
+
+def responder_en_vivo(pregunta: str):
+    """Consume el flujo del agente pintando su progreso en tiempo real.
+
+    Se usan dos marcadores: uno para los pasos del agente, que se reescribe a
+    medida que avanza, y otro para la respuesta, que crece token a token con un
+    cursor de escritura hasta que el flujo termina.
+    """
+    hueco_pasos = st.empty()
+    hueco_texto = st.empty()
+
+    pasos: list[str] = []
+    texto = ""
+    respuesta = None
+
+    for evento in agente.preguntar_en_streaming(pregunta):
+        if evento.tipo == "razonando":
+            # La primera vuelta decide qué herramienta usar; las siguientes ya
+            # trabajan sobre lo recuperado.
+            pasos.append(
+                "<b>Analizando la consulta</b>"
+                if evento.dato == 1
+                else "<b>Integrando la información recuperada</b>"
+            )
+        elif evento.tipo == "herramienta":
+            nombre, _ = evento.dato
+            etiqueta = ETIQUETAS_HERRAMIENTA.get(nombre, "Herramienta")
+            pasos.append(f"<b>{etiqueta}</b> · <code>{nombre}</code>")
+        elif evento.tipo == "fuentes":
+            cantidad = len(evento.dato)
+            plural = "s" if cantidad != 1 else ""
+            pasos.append(f"<b>{cantidad}</b> documento{plural} recuperado{plural}")
+        elif evento.tipo == "esperando":
+            pasos.append(
+                f"<b>Límite de peticiones alcanzado</b> · reintentando en {evento.dato:.0f} s"
+            )
+        elif evento.tipo == "texto":
+            texto += evento.dato
+            hueco_texto.markdown(texto + '<span class="vs-cursor"></span>', unsafe_allow_html=True)
+        elif evento.tipo == "fin":
+            respuesta = evento.dato
+
+        if evento.tipo in {"razonando", "herramienta", "fuentes", "esperando"}:
+            hueco_pasos.markdown(
+                '<div class="vs-pasos">'
+                + "".join(paso_html(p, activo=(i == len(pasos) - 1)) for i, p in enumerate(pasos))
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+    hueco_pasos.empty()
+    hueco_texto.markdown(texto or "")
+    return respuesta
 
 
 with st.sidebar:
@@ -223,14 +295,11 @@ if pregunta:
         dibujar_mensaje_usuario(pregunta)
 
     with st.chat_message("assistant", avatar="🩺"):
-        with st.spinner("Consultando la documentación..."):
-            try:
-                respuesta = agente.preguntar(pregunta)
-            except Exception as error:  # noqa: BLE001
-                st.error(f"Ocurrió un error al consultar el modelo: {error}")
-                st.stop()
-
-        st.markdown(respuesta.texto)
+        try:
+            respuesta = responder_en_vivo(pregunta)
+        except Exception as error:  # noqa: BLE001
+            st.error(f"Ocurrió un error al consultar el modelo: {error}")
+            st.stop()
 
         traza = [
             {

@@ -36,11 +36,24 @@ def _espera_sugerida(mensaje: str) -> float | None:
     return None
 
 
-def _es_reintentable(error: Exception) -> bool:
+def es_reintentable(error: Exception) -> bool:
+    """Indica si el error es transitorio y merece otro intento."""
     codigo = getattr(error, "code", None) or getattr(error, "status_code", None)
     if codigo in CODIGOS_REINTENTABLES:
         return True
     return any(str(c) in str(error)[:80] for c in CODIGOS_REINTENTABLES)
+
+
+def calcular_espera(error: Exception, intento: int) -> float:
+    """Segundos a esperar antes del siguiente intento.
+
+    Da prioridad al `retryDelay` que sugiere la propia API y añade *jitter*
+    para que varios usuarios simultáneos no reintenten todos a la vez.
+    """
+    espera = _espera_sugerida(str(error))
+    if espera is None:
+        espera = ESPERA_BASE * (2 ** (intento - 1))
+    return min(espera + random.uniform(0, 1.5), ESPERA_MAXIMA)
 
 
 def llamar_con_reintentos(operacion: Callable[[], T], descripcion: str = "la API") -> T:
@@ -53,15 +66,9 @@ def llamar_con_reintentos(operacion: Callable[[], T], descripcion: str = "la API
         except Exception as error:  # noqa: BLE001 - se reclasifica más abajo
             ultimo_error = error
 
-            if not _es_reintentable(error) or intento == MAX_REINTENTOS:
+            if not es_reintentable(error) or intento == MAX_REINTENTOS:
                 raise
 
-            espera = _espera_sugerida(str(error))
-            if espera is None:
-                espera = ESPERA_BASE * (2 ** (intento - 1))
-            # Jitter para que varios usuarios simultáneos no reintenten a la vez.
-            espera = min(espera + random.uniform(0, 1.5), ESPERA_MAXIMA)
-
-            time.sleep(espera)
+            time.sleep(calcular_espera(error, intento))
 
     raise RuntimeError(f"No se pudo completar la llamada a {descripcion}.") from ultimo_error

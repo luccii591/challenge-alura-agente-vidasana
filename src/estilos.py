@@ -1,56 +1,66 @@
-"""Tema visual de la aplicación: paletas clara y oscura, y CSS derivado.
+"""Sistema visual de la aplicación: paletas, animaciones y componentes.
 
-Streamlit no permite cambiar de tema en caliente desde su configuración, así
-que el tema se resuelve aquí: se definen las dos paletas como variables CSS y
-se inyecta la hoja de estilos correspondiente en cada render. Los selectores se
-apoyan en atributos `data-testid`, que son la superficie más estable de
-Streamlit frente a los nombres de clase autogenerados.
+Streamlit no permite alternar de tema en caliente desde su configuración, así
+que el tema se resuelve aquí: cada paleta se materializa en variables CSS y la
+hoja de estilos se inyecta en cada render.
+
+Los selectores se apoyan en atributos `data-testid`, que son la superficie más
+estable de Streamlit frente a los nombres de clase autogenerados.
 """
 
 from __future__ import annotations
 
+import html
 from string import Template
 
 PALETAS: dict[str, dict[str, str]] = {
     "claro": {
-        "fondo": "#F1F5F9",
-        "fondo_degradado": "radial-gradient(1200px 600px at 15% -10%, #E0F2F1 0%, transparent 55%), radial-gradient(900px 500px at 100% 0%, #E0E7FF 0%, transparent 50%)",
-        "superficie": "#FFFFFF",
-        "superficie_alt": "#F8FAFC",
-        "borde": "#E2E8F0",
-        "texto": "#0F172A",
-        "texto_suave": "#64748B",
+        "fondo": "#EEF2F7",
+        "aurora_a": "rgba(13,148,136,.30)",
+        "aurora_b": "rgba(99,102,241,.22)",
+        "aurora_c": "rgba(56,189,248,.20)",
+        "vidrio": "rgba(255,255,255,.72)",
+        "vidrio_alt": "rgba(255,255,255,.55)",
+        "vidrio_borde": "rgba(15,23,42,.09)",
+        "superficie_solida": "#FFFFFF",
+        "texto": "#0B1220",
+        "texto_suave": "#5A6B84",
         "acento": "#0D9488",
-        "acento_fuerte": "#0F766E",
-        "acento_tenue": "#CCFBF1",
-        "burbuja_usuario": "#0F766E",
-        "burbuja_usuario_texto": "#FFFFFF",
-        "aviso_fondo": "#FEF3C7",
+        "acento_2": "#4F46E5",
+        "acento_tenue": "rgba(13,148,136,.12)",
+        "burbuja_usuario": "linear-gradient(135deg,#0F766E,#115E59)",
+        "burbuja_usuario_texto": "#F0FDFA",
+        "aviso_fondo": "rgba(251,191,36,.14)",
         "aviso_borde": "#F59E0B",
         "aviso_texto": "#78350F",
-        "sombra": "0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.15)",
-        "codigo_fondo": "#F1F5F9",
+        "sombra": "0 1px 2px rgba(15,23,42,.04), 0 18px 40px -24px rgba(15,23,42,.35)",
+        "codigo_fondo": "rgba(13,148,136,.10)",
         "codigo_texto": "#0F766E",
+        "pista": "rgba(15,23,42,.08)",
     },
     "oscuro": {
-        "fondo": "#0B1220",
-        "fondo_degradado": "radial-gradient(1200px 600px at 15% -10%, #0F2E2B 0%, transparent 55%), radial-gradient(900px 500px at 100% 0%, #16203C 0%, transparent 50%)",
-        "superficie": "#131C2E",
-        "superficie_alt": "#0F1728",
-        "borde": "#243044",
-        "texto": "#E8EEF7",
-        "texto_suave": "#93A3B8",
+        "fondo": "#070B14",
+        "aurora_a": "rgba(45,212,191,.26)",
+        "aurora_b": "rgba(99,102,241,.26)",
+        "aurora_c": "rgba(14,165,233,.18)",
+        "vidrio": "rgba(19,28,46,.68)",
+        "vidrio_alt": "rgba(13,20,34,.55)",
+        "vidrio_borde": "rgba(148,163,184,.16)",
+        "superficie_solida": "#111A2B",
+        "texto": "#E9F0FA",
+        "texto_suave": "#8FA2BC",
         "acento": "#2DD4BF",
-        "acento_fuerte": "#5EEAD4",
-        "acento_tenue": "#134E4A",
-        "burbuja_usuario": "#134E4A",
-        "burbuja_usuario_texto": "#E8FFFB",
-        "aviso_fondo": "#2A2010",
+        "acento_2": "#818CF8",
+        "acento_tenue": "rgba(45,212,191,.14)",
+        "burbuja_usuario": "linear-gradient(135deg,#0F766E,#155E75)",
+        "burbuja_usuario_texto": "#ECFEFF",
+        "aviso_fondo": "rgba(180,83,9,.18)",
         "aviso_borde": "#B45309",
         "aviso_texto": "#FCD9A0",
-        "sombra": "0 1px 2px rgba(0,0,0,.4), 0 12px 32px -14px rgba(0,0,0,.7)",
-        "codigo_fondo": "#0B1220",
+        "sombra": "0 1px 2px rgba(0,0,0,.5), 0 22px 50px -26px rgba(0,0,0,.9)",
+        "codigo_fondo": "rgba(45,212,191,.10)",
         "codigo_texto": "#5EEAD4",
+        "pista": "rgba(148,163,184,.16)",
     },
 }
 
@@ -58,276 +68,381 @@ PALETAS: dict[str, dict[str, str]] = {
 _PLANTILLA_CSS = Template(
     """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap');
 
 :root {
   --vs-fondo: $fondo;
-  --vs-superficie: $superficie;
-  --vs-superficie-alt: $superficie_alt;
-  --vs-borde: $borde;
+  --vs-vidrio: $vidrio;
+  --vs-vidrio-alt: $vidrio_alt;
+  --vs-borde: $vidrio_borde;
+  --vs-solido: $superficie_solida;
   --vs-texto: $texto;
-  --vs-texto-suave: $texto_suave;
+  --vs-suave: $texto_suave;
   --vs-acento: $acento;
-  --vs-acento-fuerte: $acento_fuerte;
+  --vs-acento-2: $acento_2;
   --vs-acento-tenue: $acento_tenue;
   --vs-sombra: $sombra;
+  --vs-pista: $pista;
 }
 
-html, body, [class*="css"], [data-testid="stAppViewContainer"] {
+html, body, [data-testid="stAppViewContainer"], [class*="css"] {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- Lienzo ---------- */
+/* ===================== Lienzo y aurora ===================== */
 [data-testid="stAppViewContainer"] {
-  background: $fondo_degradado, $fondo;
+  background: $fondo;
+  color: var(--vs-texto);
+  position: relative;
+  isolation: isolate;
+}
+[data-testid="stAppViewContainer"]::before {
+  content: "";
+  position: fixed; inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 42% at 18% 22%, $aurora_a 0%, transparent 62%),
+    radial-gradient(34% 40% at 82% 12%, $aurora_b 0%, transparent 60%),
+    radial-gradient(42% 38% at 62% 88%, $aurora_c 0%, transparent 62%);
+  filter: blur(46px) saturate(120%);
+  animation: vs-aurora 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes vs-aurora {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  50%  { transform: translate3d(2.5%, -2%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 2.5%, 0) scale(1.04); }
+}
+
+[data-testid="stMain"], [data-testid="stSidebar"], [data-testid="stBottom"] {
+  position: relative; z-index: 1;
+}
+[data-testid="stHeader"] { background: transparent; z-index: 2; }
+[data-testid="stMain"] .block-container { padding-top: 2rem; max-width: 54rem; }
+
+[data-testid="stAppViewContainer"] p, [data-testid="stAppViewContainer"] li,
+[data-testid="stAppViewContainer"] h1, [data-testid="stAppViewContainer"] h2,
+[data-testid="stAppViewContainer"] h3, [data-testid="stAppViewContainer"] h4 {
   color: var(--vs-texto);
 }
-[data-testid="stHeader"] { background: transparent; }
-[data-testid="stMain"] .block-container { padding-top: 2.2rem; max-width: 52rem; }
 
-[data-testid="stAppViewContainer"] p,
-[data-testid="stAppViewContainer"] li,
-[data-testid="stAppViewContainer"] span,
-[data-testid="stAppViewContainer"] h1,
-[data-testid="stAppViewContainer"] h2,
-[data-testid="stAppViewContainer"] h3,
-[data-testid="stAppViewContainer"] h4 { color: var(--vs-texto); }
-
-/* ---------- Encabezado ---------- */
+/* ===================== Encabezado ===================== */
 .vs-hero {
-  background: var(--vs-superficie);
-  border: 1px solid var(--vs-borde);
-  border-radius: 20px;
-  padding: 1.6rem 1.8rem;
-  box-shadow: var(--vs-sombra);
   position: relative;
+  background: var(--vs-vidrio);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--vs-borde);
+  border-radius: 24px;
+  padding: 1.7rem 1.9rem 1.5rem;
+  box-shadow: var(--vs-sombra);
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin-bottom: .9rem;
+  animation: vs-entrada .55s cubic-bezier(.2,.7,.3,1) both;
 }
-.vs-hero::before {
+.vs-hero::after {
   content: "";
-  position: absolute; inset: 0 0 auto 0; height: 4px;
-  background: linear-gradient(90deg, var(--vs-acento), var(--vs-acento-fuerte), transparent);
+  position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--vs-acento), var(--vs-acento-2), transparent);
+  background-size: 200% 100%;
+  animation: vs-barrido 6s linear infinite;
 }
-.vs-hero-fila { display: flex; align-items: center; gap: 1rem; }
-.vs-hero-icono {
-  width: 54px; height: 54px; flex: 0 0 54px;
+@keyframes vs-barrido { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes vs-entrada { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+
+.vs-hero-fila { display: flex; align-items: center; gap: 1.05rem; }
+.vs-logo {
+  width: 58px; height: 58px; flex: 0 0 58px;
+  border-radius: 18px;
   display: grid; place-items: center;
-  border-radius: 16px; font-size: 1.7rem;
-  background: var(--vs-acento-tenue);
-  border: 1px solid var(--vs-borde);
+  background: linear-gradient(140deg, var(--vs-acento), var(--vs-acento-2));
+  box-shadow: 0 10px 26px -12px var(--vs-acento);
 }
-.vs-hero-titulo {
-  margin: 0; font-size: 1.85rem; font-weight: 800;
-  letter-spacing: -.02em; color: var(--vs-texto); line-height: 1.15;
+.vs-logo svg { width: 34px; height: 34px; }
+.vs-logo .vs-trazo {
+  stroke: #fff; stroke-width: 2.1; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 66; stroke-dashoffset: 66;
+  animation: vs-latido 2.6s ease-in-out infinite;
 }
-.vs-hero-sub { margin: .3rem 0 0; font-size: .92rem; color: var(--vs-texto-suave); }
-.vs-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+@keyframes vs-latido {
+  0%   { stroke-dashoffset: 66; opacity: .35; }
+  45%  { stroke-dashoffset: 0;  opacity: 1; }
+  75%  { stroke-dashoffset: 0;  opacity: 1; }
+  100% { stroke-dashoffset: -66; opacity: .35; }
+}
+
+.vs-titulo {
+  margin: 0; font-size: 2.05rem; font-weight: 900; letter-spacing: -.035em; line-height: 1.08;
+  background: linear-gradient(100deg, var(--vs-texto) 10%, var(--vs-acento) 45%, var(--vs-acento-2) 70%, var(--vs-texto) 95%);
+  background-size: 220% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: vs-brillo 9s linear infinite;
+}
+@keyframes vs-brillo { to { background-position: 220% center; } }
+.vs-sub { margin: .35rem 0 0; font-size: .92rem; color: var(--vs-suave); }
+
+.vs-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1.05rem; }
 .vs-chip {
-  font-size: .72rem; font-weight: 600; letter-spacing: .02em;
-  padding: .28rem .6rem; border-radius: 999px;
-  background: var(--vs-superficie-alt);
+  font-size: .715rem; font-weight: 600; letter-spacing: .015em;
+  padding: .3rem .68rem; border-radius: 999px;
+  background: var(--vs-vidrio-alt);
   border: 1px solid var(--vs-borde);
-  color: var(--vs-texto-suave);
+  color: var(--vs-suave);
+  transition: transform .18s ease, border-color .18s ease, color .18s ease;
 }
-.vs-chip-acento {
+.vs-chip:hover { transform: translateY(-2px); border-color: var(--vs-acento); color: var(--vs-texto); }
+.vs-chip-vivo {
   background: var(--vs-acento-tenue);
   border-color: var(--vs-acento);
-  color: var(--vs-acento-fuerte);
+  color: var(--vs-acento);
+  display: inline-flex; align-items: center; gap: .38rem;
+}
+.vs-punto {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--vs-acento);
+  box-shadow: 0 0 0 0 var(--vs-acento);
+  animation: vs-pulso 2s infinite;
+}
+@keyframes vs-pulso {
+  0%   { box-shadow: 0 0 0 0 var(--vs-acento); opacity: 1; }
+  70%  { box-shadow: 0 0 0 7px transparent; opacity: .75; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
 }
 
-/* ---------- Aviso de proyecto ficticio ---------- */
+/* ===================== Aviso ===================== */
 .vs-aviso {
   display: flex; gap: .7rem; align-items: flex-start;
   background: $aviso_fondo;
-  border: 1px solid $aviso_borde;
-  border-left-width: 4px;
-  border-radius: 12px;
-  padding: .8rem 1rem;
-  margin-bottom: 1.4rem;
-  font-size: .82rem; line-height: 1.5;
-  color: $aviso_texto;
+  border: 1px solid $aviso_borde; border-left-width: 3px;
+  border-radius: 14px; padding: .8rem 1rem; margin-bottom: 1.3rem;
+  font-size: .8rem; line-height: 1.55; color: $aviso_texto;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 .vs-aviso strong { color: $aviso_texto; }
 
-/* ---------- Mensajes de chat ---------- */
+/* ===================== Chat ===================== */
 [data-testid="stChatMessage"] {
-  background: var(--vs-superficie);
+  background: var(--vs-vidrio);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(18px) saturate(170%);
   border: 1px solid var(--vs-borde);
-  border-radius: 16px;
-  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  padding: 1rem 1.15rem;
   box-shadow: var(--vs-sombra);
-  margin-bottom: .7rem;
+  margin-bottom: .65rem;
+  animation: vs-entrada .4s cubic-bezier(.2,.7,.3,1) both;
 }
 /* Streamlit no expone ningún atributo estable que distinga el mensaje del
    usuario del de la asistente: solo cambia una clase autogenerada del tipo
    `st-emotion-cache-1fee4w7`, que varía entre versiones. Por eso la propia
-   aplicación inserta un marcador vacío en los mensajes del usuario y el estilo
-   se engancha a él. */
+   aplicación inserta un marcador vacío y el estilo se engancha a él. */
 .vs-marca-usuario { display: none; }
 [data-testid="stChatMessage"]:has(.vs-marca-usuario) {
   background: $burbuja_usuario;
-  border-color: $burbuja_usuario;
+  border-color: transparent;
 }
-[data-testid="stChatMessage"]:has(.vs-marca-usuario) p,
-[data-testid="stChatMessage"]:has(.vs-marca-usuario) span {
-  color: $burbuja_usuario_texto !important;
-  font-weight: 500;
+[data-testid="stChatMessage"]:has(.vs-marca-usuario) p {
+  color: $burbuja_usuario_texto !important; font-weight: 500;
 }
-[data-testid="stChatMessage"] table {
-  border-collapse: collapse; width: 100%; font-size: .86rem;
-}
+[data-testid="stChatMessage"] table { border-collapse: collapse; width: 100%; font-size: .86rem; }
 [data-testid="stChatMessage"] th, [data-testid="stChatMessage"] td {
   border: 1px solid var(--vs-borde); padding: .45rem .6rem;
 }
-[data-testid="stChatMessage"] th { background: var(--vs-superficie-alt); }
+[data-testid="stChatMessage"] th { background: var(--vs-vidrio-alt); }
 
-/* ---------- Entrada de chat ---------- */
-/* La franja inferior la pinta Streamlit con su propio color de tema; se
-   transparenta para que el degradado del lienzo continúe hasta abajo. */
-[data-testid="stBottom"],
-[data-testid="stBottom"] > div,
-[data-testid="stBottomBlockContainer"] {
-  background: transparent !important;
+/* Cursor de escritura durante el streaming */
+.vs-cursor {
+  display: inline-block; width: 7px; height: 1.05em;
+  background: var(--vs-acento); border-radius: 2px;
+  vertical-align: text-bottom; margin-left: 2px;
+  animation: vs-parpadeo 1s steps(2, start) infinite;
 }
-[data-testid="stBottomBlockContainer"] { padding-bottom: 1.2rem; }
+@keyframes vs-parpadeo { 50% { opacity: 0; } }
 
-[data-testid="stChatInput"] {
-  background: var(--vs-superficie) !important;
+/* ===================== Pasos del agente en vivo ===================== */
+.vs-pasos { display: flex; flex-direction: column; gap: .32rem; margin: .1rem 0 .2rem; }
+.vs-paso {
+  display: flex; align-items: center; gap: .55rem;
+  font-size: .78rem; color: var(--vs-suave);
+  padding: .34rem .6rem; border-radius: 10px;
+  background: var(--vs-vidrio-alt); border: 1px solid var(--vs-borde);
+  animation: vs-entrada .3s ease both;
+}
+.vs-paso b { color: var(--vs-texto); font-weight: 600; }
+.vs-paso code {
+  font-family: 'JetBrains Mono', monospace; font-size: .74rem;
+  color: $codigo_texto; background: $codigo_fondo;
+  padding: .08rem .35rem; border-radius: 5px;
+}
+.vs-paso-activo { border-color: var(--vs-acento); }
+
+/* ===================== Tarjetas de fuente ===================== */
+.vs-fuentes { display: flex; flex-direction: column; gap: .45rem; margin-top: .2rem; }
+.vs-fuente {
+  background: var(--vs-vidrio-alt);
   border: 1px solid var(--vs-borde);
-  border-radius: 14px;
-  box-shadow: var(--vs-sombra);
+  border-radius: 12px; padding: .55rem .7rem;
+  transition: border-color .18s ease, transform .18s ease;
 }
-[data-testid="stChatInput"] > div,
-[data-testid="stChatInput"] textarea {
-  background: transparent !important;
-  color: var(--vs-texto) !important;
+.vs-fuente:hover { border-color: var(--vs-acento); transform: translateX(2px); }
+.vs-fuente-fila { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
+.vs-fuente-nombre { font-size: .8rem; font-weight: 600; color: var(--vs-texto); }
+.vs-fuente-valor { font-size: .72rem; font-weight: 700; color: var(--vs-acento); font-variant-numeric: tabular-nums; }
+.vs-pista {
+  height: 4px; border-radius: 999px; background: var(--vs-pista);
+  margin-top: .42rem; overflow: hidden;
 }
-[data-testid="stChatInput"] textarea::placeholder { color: var(--vs-texto-suave) !important; }
+.vs-pista span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--vs-acento), var(--vs-acento-2));
+  animation: vs-llenar .8s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes vs-llenar { from { width: 0 !important; } }
+.vs-fuente-tipo { font-size: .66rem; color: var(--vs-suave); letter-spacing: .04em; text-transform: uppercase; }
+
+/* ===================== Entrada ===================== */
+[data-testid="stBottom"], [data-testid="stBottom"] > div,
+[data-testid="stBottomBlockContainer"] { background: transparent !important; }
+[data-testid="stBottomBlockContainer"] { padding-bottom: 1.1rem; }
+[data-testid="stChatInput"] {
+  background: var(--vs-vidrio) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid var(--vs-borde);
+  border-radius: 16px; box-shadow: var(--vs-sombra);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+[data-testid="stChatInput"]:focus-within {
+  border-color: var(--vs-acento);
+  box-shadow: 0 0 0 3px var(--vs-acento-tenue), var(--vs-sombra);
+}
+[data-testid="stChatInput"] > div, [data-testid="stChatInput"] textarea {
+  background: transparent !important; color: var(--vs-texto) !important;
+}
+[data-testid="stChatInput"] textarea::placeholder { color: var(--vs-suave) !important; }
 [data-testid="stChatInput"] button { background: transparent !important; }
 [data-testid="stChatInput"] svg { fill: var(--vs-acento); }
 
-/* ---------- Barra lateral ---------- */
+/* ===================== Barra lateral ===================== */
 [data-testid="stSidebar"] {
-  background: var(--vs-superficie);
+  background: var(--vs-vidrio);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
   border-right: 1px solid var(--vs-borde);
 }
 [data-testid="stSidebar"] * { color: var(--vs-texto); }
 [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-  font-size: .78rem !important; font-weight: 700; letter-spacing: .09em;
-  text-transform: uppercase; color: var(--vs-texto-suave) !important;
-  margin-bottom: .5rem;
+  font-size: .72rem !important; font-weight: 800; letter-spacing: .11em;
+  text-transform: uppercase; color: var(--vs-suave) !important; margin-bottom: .5rem;
 }
 [data-testid="stSidebar"] hr { border-color: var(--vs-borde); }
 
-/* Tarjeta de métrica */
 [data-testid="stMetric"] {
-  background: var(--vs-superficie-alt);
-  border: 1px solid var(--vs-borde);
-  border-radius: 14px;
-  padding: .8rem .9rem;
+  background: var(--vs-vidrio-alt); border: 1px solid var(--vs-borde);
+  border-radius: 14px; padding: .75rem .85rem;
+  transition: border-color .18s ease, transform .18s ease;
 }
+[data-testid="stMetric"]:hover { border-color: var(--vs-acento); transform: translateY(-2px); }
 [data-testid="stMetricValue"] {
-  font-size: 1.9rem !important; font-weight: 800;
-  color: var(--vs-acento) !important; letter-spacing: -.02em;
+  font-size: 1.85rem !important; font-weight: 900; letter-spacing: -.03em;
+  background: linear-gradient(120deg, var(--vs-acento), var(--vs-acento-2));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 [data-testid="stMetricLabel"] p {
-  font-size: .74rem !important; font-weight: 600;
-  letter-spacing: .05em; text-transform: uppercase;
-  color: var(--vs-texto-suave) !important;
+  font-size: .68rem !important; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--vs-suave) !important;
 }
 
-/* Botones de pregunta sugerida */
 [data-testid="stSidebar"] .stButton > button {
   width: 100%; text-align: left; justify-content: flex-start;
   white-space: normal; height: auto; line-height: 1.35;
-  background: var(--vs-superficie-alt);
-  border: 1px solid var(--vs-borde);
-  border-radius: 12px;
-  padding: .6rem .75rem;
-  font-size: .82rem; font-weight: 500;
-  color: var(--vs-texto);
-  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+  background: var(--vs-vidrio-alt); border: 1px solid var(--vs-borde);
+  border-radius: 12px; padding: .6rem .75rem;
+  font-size: .81rem; font-weight: 500; color: var(--vs-texto);
+  position: relative; overflow: hidden;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+[data-testid="stSidebar"] .stButton > button::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(180deg, var(--vs-acento), var(--vs-acento-2));
+  transform: scaleY(0); transform-origin: top; transition: transform .18s ease;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
-  border-color: var(--vs-acento);
-  background: var(--vs-acento-tenue);
-  transform: translateX(2px);
+  border-color: var(--vs-acento); transform: translateX(3px);
+  box-shadow: 0 8px 20px -14px var(--vs-acento);
 }
+[data-testid="stSidebar"] .stButton > button:hover::before { transform: scaleY(1); }
 [data-testid="stSidebar"] .stButton > button:focus:not(:active) {
   border-color: var(--vs-acento); color: var(--vs-texto);
 }
 
-/* ---------- Avisos (st.info / st.error) ---------- */
+/* ===================== Avisos y desplegables ===================== */
 [data-testid="stAlert"] {
-  background: var(--vs-superficie) !important;
-  border: 1px solid var(--vs-borde);
-  border-radius: 14px;
-  box-shadow: var(--vs-sombra);
+  background: var(--vs-vidrio) !important;
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid var(--vs-borde); border-radius: 16px; box-shadow: var(--vs-sombra);
 }
-[data-testid="stAlertContainer"] {
-  background: transparent !important;
-  color: var(--vs-texto) !important;
-}
+[data-testid="stAlertContainer"] { background: transparent !important; color: var(--vs-texto) !important; }
 [data-testid="stAlertContainer"] p { color: var(--vs-texto) !important; }
 
-/* ---------- Desplegables ---------- */
 [data-testid="stExpander"] {
-  background: var(--vs-superficie-alt);
-  border: 1px solid var(--vs-borde);
-  border-radius: 12px;
-  overflow: hidden;
+  background: var(--vs-vidrio-alt); border: 1px solid var(--vs-borde);
+  border-radius: 14px; overflow: hidden;
 }
-[data-testid="stExpander"] details,
-[data-testid="stExpander"] summary,
+[data-testid="stExpander"] details, [data-testid="stExpander"] summary,
 [data-testid="stExpanderDetails"] {
-  background: var(--vs-superficie-alt) !important;
-  border: none !important;
-  color: var(--vs-texto) !important;
+  background: transparent !important; border: none !important; color: var(--vs-texto) !important;
 }
-[data-testid="stExpander"] summary { font-size: .84rem; font-weight: 600; }
+[data-testid="stExpander"] summary { font-size: .82rem; font-weight: 600; }
 [data-testid="stExpander"] summary:hover { color: var(--vs-acento) !important; }
-[data-testid="stExpander"] summary svg { fill: var(--vs-texto-suave); }
+[data-testid="stExpander"] summary svg { fill: var(--vs-suave); }
 
-/* Bloque JSON de los argumentos de la herramienta */
 [data-testid="stJson"] {
-  background: var(--vs-superficie) !important;
-  border: 1px solid var(--vs-borde);
-  border-radius: 8px;
-  padding: .45rem .65rem;
+  background: var(--vs-solido) !important; border: 1px solid var(--vs-borde);
+  border-radius: 10px; padding: .45rem .65rem;
 }
 [data-testid="stJson"] * { background: transparent !important; }
 
-/* Nombre de herramienta en la traza */
 [data-testid="stMain"] code {
-  background: $codigo_fondo;
-  color: $codigo_texto;
-  border: 1px solid var(--vs-borde);
-  border-radius: 6px;
-  padding: .12rem .4rem;
-  font-size: .82em; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  background: $codigo_fondo; color: $codigo_texto;
+  border: 1px solid var(--vs-borde); border-radius: 6px;
+  padding: .12rem .4rem; font-size: .8em; font-weight: 500;
 }
 
-/* ---------- Interruptor de tema ---------- */
-[data-testid="stSidebar"] [data-testid="stToggle"] { margin-bottom: .2rem; }
-
-/* ---------- Pie ---------- */
+/* ===================== Pie ===================== */
 .vs-pie {
-  margin-top: 1.2rem; padding-top: .9rem;
-  border-top: 1px solid var(--vs-borde);
-  font-size: .72rem; color: var(--vs-texto-suave); line-height: 1.5;
+  margin-top: 1.1rem; padding-top: .85rem; border-top: 1px solid var(--vs-borde);
+  font-size: .7rem; color: var(--vs-suave); line-height: 1.55;
 }
 .vs-pie a { color: var(--vs-acento); text-decoration: none; }
+.vs-pie a:hover { text-decoration: underline; }
 
-/* ---------- Responsive ---------- */
+/* ===================== Responsive y accesibilidad ===================== */
 @media (max-width: 640px) {
-  .vs-hero-titulo { font-size: 1.4rem; }
-  .vs-hero-icono { width: 44px; height: 44px; flex-basis: 44px; font-size: 1.35rem; }
-  [data-testid="stMain"] .block-container { padding-top: 1.2rem; }
+  .vs-titulo { font-size: 1.5rem; }
+  .vs-logo { width: 46px; height: 46px; flex-basis: 46px; }
+  .vs-logo svg { width: 27px; height: 27px; }
+  [data-testid="stMain"] .block-container { padding-top: 1.1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 </style>
 """
 )
+
+
+_LOGO_SVG = """
+<svg viewBox="0 0 40 40" aria-hidden="true">
+  <path class="vs-trazo" d="M3 21h7l3.2-8.4 4.6 15.6 4-11.2 2.6 4h12.6"/>
+</svg>
+"""
 
 
 def construir_css(tema: str) -> str:
@@ -336,26 +451,58 @@ def construir_css(tema: str) -> str:
 
 
 def encabezado_html(titulo: str, subtitulo: str, chips: list[tuple[str, bool]]) -> str:
-    """Construye el encabezado destacado de la aplicación.
-
-    `chips` es una lista de pares (texto, destacado).
-    """
+    """Encabezado con logo animado, título en degradado y etiquetas del corpus."""
     etiquetas = "".join(
-        f'<span class="vs-chip{" vs-chip-acento" if destacado else ""}">{texto}</span>'
-        for texto, destacado in chips
+        (
+            f'<span class="vs-chip vs-chip-vivo"><span class="vs-punto"></span>{html.escape(texto)}</span>'
+            if vivo
+            else f'<span class="vs-chip">{html.escape(texto)}</span>'
+        )
+        for texto, vivo in chips
     )
     return f"""
 <div class="vs-hero">
   <div class="vs-hero-fila">
-    <div class="vs-hero-icono">🩺</div>
+    <div class="vs-logo">{_LOGO_SVG}</div>
     <div>
-      <h1 class="vs-hero-titulo">{titulo}</h1>
-      <p class="vs-hero-sub">{subtitulo}</p>
+      <h1 class="vs-titulo">{html.escape(titulo)}</h1>
+      <p class="vs-sub">{html.escape(subtitulo)}</p>
     </div>
   </div>
   <div class="vs-chips">{etiquetas}</div>
 </div>
 """
+
+
+def paso_html(texto: str, activo: bool = False) -> str:
+    """Píldora que describe un paso del agente. `texto` admite `<b>` y `<code>`."""
+    clase = "vs-paso vs-paso-activo" if activo else "vs-paso"
+    return f'<div class="{clase}">{texto}</div>'
+
+
+def fuentes_html(fuentes: list) -> str:
+    """Tarjetas de documento con la confianza de la recuperación semántica."""
+    if not fuentes:
+        return ""
+
+    tarjetas = []
+    for fuente in fuentes:
+        exacta = fuente.similitud is None
+        etiqueta = "consulta exacta" if exacta else "similitud semántica"
+        valor = "100%" if exacta else f"{fuente.confianza}%"
+        tarjetas.append(
+            f"""
+<div class="vs-fuente">
+  <div class="vs-fuente-fila">
+    <span class="vs-fuente-nombre">📄 {html.escape(fuente.nombre)}</span>
+    <span class="vs-fuente-valor">{valor}</span>
+  </div>
+  <div class="vs-pista"><span style="width:{fuente.confianza}%"></span></div>
+  <div class="vs-fuente-tipo">{etiqueta}</div>
+</div>"""
+        )
+
+    return f'<div class="vs-fuentes">{"".join(tarjetas)}</div>'
 
 
 AVISO_HTML = """
@@ -371,7 +518,7 @@ AVISO_HTML = """
 
 PIE_HTML = """
 <div class="vs-pie">
-  <strong>Challenge Alura Agente</strong> · Oracle Next Education (ONE) — Fase Tech AI Builder<br/>
+  <strong>Challenge Alura Agente</strong> · Oracle Next Education (ONE) — Tech AI Builder<br/>
   Agente RAG con <em>function calling</em> sobre Google Gemini ·
   <a href="https://github.com/luccii591/challenge-alura-agente-vidasana" target="_blank">Código en GitHub</a>
 </div>

@@ -22,12 +22,32 @@ from src.vectorstore import IndiceVectorial
 
 
 @dataclass
+class Fuente:
+    """Documento consultado, con la confianza de la recuperación semántica.
+
+    `similitud` es el coseno entre la consulta y el fragmento; vale `None` en
+    las consultas estructuradas al catálogo, donde el resultado es exacto y
+    hablar de confianza no tendría sentido.
+    """
+
+    nombre: str
+    similitud: float | None = None
+
+    @property
+    def confianza(self) -> int:
+        """Similitud como porcentaje entero, para la barra de la interfaz."""
+        if self.similitud is None:
+            return 100
+        return max(0, min(100, round(self.similitud * 100)))
+
+
+@dataclass
 class RegistroDeUso:
     """Traza de una invocación de herramienta, para mostrarla en la interfaz."""
 
     herramienta: str
     argumentos: dict
-    fuentes: list[str] = field(default_factory=list)
+    fuentes: list[Fuente] = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #
@@ -154,11 +174,16 @@ class CajaDeHerramientas:
             for c in coincidencias
         ]
 
+        vistas: dict[str, float] = {}
+        for coincidencia in coincidencias:
+            nombre = coincidencia.fragmento.cita
+            vistas[nombre] = max(vistas.get(nombre, 0.0), coincidencia.similitud)
+
         self.usos.append(
             RegistroDeUso(
                 herramienta="buscar_en_documentos",
                 argumentos={"consulta": consulta},
-                fuentes=[p["fuente"] for p in pasajes],
+                fuentes=[Fuente(nombre, similitud) for nombre, similitud in vistas.items()],
             )
         )
         return {"consulta": consulta, "pasajes": pasajes}
@@ -208,7 +233,7 @@ class CajaDeHerramientas:
                     }.items()
                     if v
                 },
-                fuentes=["Catálogo de especialidades y tarifas (CSV)"],
+                fuentes=[Fuente("Catálogo de especialidades y tarifas (CSV)")],
             )
         )
 
@@ -238,7 +263,7 @@ class CajaDeHerramientas:
             RegistroDeUso(
                 herramienta="listar_especialidades",
                 argumentos={},
-                fuentes=["Catálogo de especialidades y tarifas (CSV)"],
+                fuentes=[Fuente("Catálogo de especialidades y tarifas (CSV)")],
             )
         )
         return {

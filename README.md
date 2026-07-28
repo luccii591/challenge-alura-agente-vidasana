@@ -54,6 +54,9 @@ cancelar una cita, qué ayuno exige una ecografía, qué cubre cada seguro.
   semántica sobre los textos, o consulta estructurada sobre los datos tabulares.
 - Responde con **cifras y plazos exactos**, siempre **citando el documento de origen**.
 - **Admite cuando no sabe** en lugar de inventar, y no da consejo médico.
+- Muestra su **razonamiento en vivo**: qué herramienta invoca, cuántos documentos recupera
+  y con **qué confianza semántica** los recupera, mientras la respuesta se escribe token a
+  token.
 
 ### El problema del RAG lineal, y por qué esto es un agente
 
@@ -535,6 +538,18 @@ consume varias llamadas. Sin reintentos, la app desplegada fallaría ante cualqu
 uso. `src/resiliencia.py` lee el `retryDelay` que sugiere la propia API, añade *jitter*
 aleatorio para que varios usuarios simultáneos no reintenten a la vez, y reintenta hasta 4
 veces. Durante las pruebas absorbió un límite de cuota real de forma transparente.
+
+### Streaming y reintentos: una trampa sutil
+
+`generate_content_stream()` devuelve un **generador perezoso**: la petición HTTP no ocurre
+al llamarlo, sino al iterarlo. Envolver la llamada en el reintento, como se hacía con la
+versión no-streaming, dejaba los errores 429 por cuota completamente fuera de su alcance —
+y la aplicación se caía al primer pico de uso.
+
+La solución envuelve el **consumo completo del flujo**, no la llamada, y solo reintenta
+mientras no se haya emitido texto: lo que el usuario ya está leyendo no se puede retirar.
+Si la espera ocurre, la interfaz la muestra como un paso más del agente en lugar de
+quedarse congelada.
 
 ### Umbral de similitud con reserva
 

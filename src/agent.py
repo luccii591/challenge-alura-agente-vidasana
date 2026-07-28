@@ -11,6 +11,8 @@ traza de herramientas usadas y mostrarla en la interfaz.
 
 from __future__ import annotations
 
+import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -26,8 +28,14 @@ from src.config import (
 )
 from src.loaders import cargar_corpus, cargar_csv
 from src.prompts import INSTRUCCION_SISTEMA
-from src.resiliencia import llamar_con_reintentos
-from src.tools import DECLARACIONES, CajaDeHerramientas, RegistroDeUso, serializar
+from src.resiliencia import MAX_REINTENTOS, calcular_espera, es_reintentable
+from src.tools import (
+    DECLARACIONES,
+    CajaDeHerramientas,
+    Fuente,
+    RegistroDeUso,
+    serializar,
+)
 from src.vectorstore import IndiceVectorial
 
 
@@ -40,13 +48,31 @@ class Respuesta:
     iteraciones: int = 0
 
     @property
-    def fuentes(self) -> list[str]:
-        vistas: list[str] = []
+    def fuentes(self) -> list[Fuente]:
+        """Documentos citados, sin repetir, conservando la mejor confianza."""
+        mejores: dict[str, Fuente] = {}
         for uso in self.herramientas_usadas:
             for fuente in uso.fuentes:
-                if fuente not in vistas:
-                    vistas.append(fuente)
-        return vistas
+                previa = mejores.get(fuente.nombre)
+                if previa is None or fuente.confianza > previa.confianza:
+                    mejores[fuente.nombre] = fuente
+        return list(mejores.values())
+
+
+@dataclass
+class Evento:
+    """Suceso emitido mientras el agente resuelve una consulta.
+
+    Permite que la interfaz muestre en vivo qué está haciendo el agente en vez
+    de esperar en silencio a la respuesta final.
+
+    Tipos: `razonando` (nueva iteración), `herramienta` (invocación),
+    `fuentes` (documentos recuperados), `texto` (fragmento de la respuesta) y
+    `fin` (respuesta completa).
+    """
+
+    tipo: str
+    dato: object = None
 
 
 @dataclass
@@ -125,46 +151,88 @@ class AgenteVidaSana:
         """Borra el historial de la conversación (el índice se conserva)."""
         self.historial = []
 
-    def preguntar(self, pregunta: str) -> Respuesta:
-        """Ejecuta el bucle del agente hasta obtener una respuesta en texto."""
+    def preguntar_en_streaming(self, pregunta: str) -> Iterator[Evento]:
+        """Resuelve la consulta emitiendo eventos a medida que ocurren.
+
+        La respuesta final se transmite en fragmentos según los produce el
+        modelo, y cada invocación de herramienta se anuncia antes de
+        ejecutarse, de modo que la interfaz refleja el razonamiento en vivo.
+        """
         self.herramientas.reiniciar_traza()
         self.historial.append(
             types.Content(role="user", parts=[types.Part.from_text(text=pregunta)])
         )
 
-        for iteracion in range(1, MAX_ITERACIONES_AGENTE + 1):
-            respuesta = llamar_con_reintentos(
-                lambda: self.cliente.models.generate_content(
-                    model=MODELO_CHAT,
-                    contents=self.historial,
-                    config=self.configuracion,
-                ),
-                descripcion="el modelo de chat",
-            )
+        acumulado: list[str] = []
 
-            candidato = respuesta.candidates[0] if respuesta.candidates else None
-            contenido = candidato.content if candidato else None
-            partes = list(contenido.parts) if contenido and contenido.parts else []
+        for iteracion in range(1, MAX_ITERACIONES_AGENTE + 1):
+            yield Evento("razonando", iteracion)
+
+            partes: list[types.Part] = []
+            emitido = False
+
+            # `generate_content_stream` devuelve un generador perezoso: la
+            # petición HTTP —y por tanto un posible 429 por cuota— ocurre al
+            # iterarlo, no al crearlo. Por eso el reintento envuelve el consumo
+            # completo del flujo y no la llamada. Solo se reintenta mientras no
+            # se haya emitido texto: lo ya mostrado no se puede retirar.
+            for intento in range(1, MAX_REINTENTOS + 1):
+                partes = []
+                try:
+                    flujo = self.cliente.models.generate_content_stream(
+                        model=MODELO_CHAT,
+                        contents=self.historial,
+                        config=self.configuracion,
+                    )
+                    for trozo in flujo:
+                        candidato = trozo.candidates[0] if trozo.candidates else None
+                        contenido = candidato.content if candidato else None
+                        if contenido is None or not contenido.parts:
+                            continue
+
+                        for parte in contenido.parts:
+                            # El razonamiento interno no es parte de la respuesta.
+                            if getattr(parte, "thought", False):
+                                continue
+                            partes.append(parte)
+                            if parte.text:
+                                acumulado.append(parte.text)
+                                emitido = True
+                                yield Evento("texto", parte.text)
+                    break
+                except Exception as error:  # noqa: BLE001 - se reclasifica aquí
+                    if emitido or not es_reintentable(error) or intento == MAX_REINTENTOS:
+                        raise
+                    espera = calcular_espera(error, intento)
+                    yield Evento("esperando", espera)
+                    time.sleep(espera)
 
             llamadas = [p.function_call for p in partes if p.function_call]
+            self.historial.append(types.Content(role="model", parts=partes))
 
-            # Sin llamadas a herramientas: el modelo ya tiene la respuesta final.
+            # Sin llamadas a herramientas: el modelo ya dio la respuesta final.
             if not llamadas:
-                texto = (respuesta.text or "").strip()
-                if contenido is not None:
-                    self.historial.append(contenido)
-                return Respuesta(
-                    texto=texto or "No pude generar una respuesta. Intenta reformular tu pregunta.",
-                    herramientas_usadas=list(self.herramientas.usos),
-                    iteraciones=iteracion,
+                texto = "".join(acumulado).strip()
+                yield Evento(
+                    "fin",
+                    Respuesta(
+                        texto=texto
+                        or "No pude generar una respuesta. Intenta reformular tu pregunta.",
+                        herramientas_usadas=list(self.herramientas.usos),
+                        iteraciones=iteracion,
+                    ),
                 )
-
-            # Hay llamadas: se ejecutan y sus resultados se devuelven al modelo.
-            self.historial.append(contenido)
+                return
 
             partes_resultado = []
             for llamada in llamadas:
-                resultado = self.herramientas.ejecutar(llamada.name, dict(llamada.args or {}))
+                argumentos = dict(llamada.args or {})
+                yield Evento("herramienta", (llamada.name, argumentos))
+
+                resultado = self.herramientas.ejecutar(llamada.name, argumentos)
+                if self.herramientas.usos:
+                    yield Evento("fuentes", self.herramientas.usos[-1].fuentes)
+
                 partes_resultado.append(
                     types.Part.from_function_response(
                         name=llamada.name,
@@ -174,11 +242,22 @@ class AgenteVidaSana:
 
             self.historial.append(types.Content(role="user", parts=partes_resultado))
 
-        return Respuesta(
-            texto=(
-                "La consulta resultó demasiado compleja y alcancé el límite de pasos. "
-                "¿Puedes dividirla en preguntas más específicas?"
+        yield Evento(
+            "fin",
+            Respuesta(
+                texto=(
+                    "La consulta resultó demasiado compleja y alcancé el límite de pasos. "
+                    "¿Puedes dividirla en preguntas más específicas?"
+                ),
+                herramientas_usadas=list(self.herramientas.usos),
+                iteraciones=MAX_ITERACIONES_AGENTE,
             ),
-            herramientas_usadas=list(self.herramientas.usos),
-            iteraciones=MAX_ITERACIONES_AGENTE,
         )
+
+    def preguntar(self, pregunta: str) -> Respuesta:
+        """Versión síncrona: consume el flujo y devuelve la respuesta final."""
+        ultima: Respuesta | None = None
+        for evento in self.preguntar_en_streaming(pregunta):
+            if evento.tipo == "fin":
+                ultima = evento.dato  # type: ignore[assignment]
+        return ultima or Respuesta(texto="No se obtuvo respuesta del agente.")
