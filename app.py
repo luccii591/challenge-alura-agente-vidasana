@@ -9,6 +9,7 @@ import streamlit as st
 
 from src.agent import AgenteVidaSana, BaseDeConocimiento
 from src.config import NOMBRE_AGENTE, NOMBRE_CLINICA
+from src.loaders import huella_del_corpus
 from src.prompts import PREGUNTAS_DE_EJEMPLO
 
 st.set_page_config(
@@ -24,15 +25,21 @@ st.set_page_config(
 # --------------------------------------------------------------------------- #
 
 @st.cache_resource(show_spinner=False)
-def cargar_base_de_conocimiento() -> BaseDeConocimiento:
-    """Lee los documentos y construye el índice vectorial una sola vez."""
+def cargar_base_de_conocimiento(huella: str) -> BaseDeConocimiento:
+    """Lee los documentos y construye el índice vectorial una sola vez.
+
+    `huella` no se usa dentro de la función: es la clave de caché. Streamlit
+    puede recargar el código sin reiniciar el proceso, así que sin ella un
+    cambio en `data/` seguiría sirviendo el índice anterior.
+    """
     return BaseDeConocimiento.construir()
 
 
 def obtener_agente() -> AgenteVidaSana:
     """Un agente por sesión de usuario, sobre el índice compartido."""
     if "agente" not in st.session_state:
-        st.session_state.agente = AgenteVidaSana(base=cargar_base_de_conocimiento())
+        base = cargar_base_de_conocimiento(huella_del_corpus())
+        st.session_state.agente = AgenteVidaSana(base=base)
     return st.session_state.agente
 
 
