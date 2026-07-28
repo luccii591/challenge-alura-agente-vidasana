@@ -249,6 +249,10 @@ python cli.py "¿Cuánto cuesta una consulta de cardiología?"
 | `python scripts/generar_documentos.py` | Regenera los 5 PDFs y el CSV desde cero |
 | `python scripts/verificar_api_key.py` | Diagnostica la configuración de la API key |
 | `python scripts/probar_agente.py` | Ejecuta las 11 preguntas de prueba y guarda las respuestas |
+| `python scripts/capturar_evidencia.py` | Regenera las capturas del deploy contra la URL pública |
+
+> El último script necesita las dependencias de desarrollo:
+> `pip install -r requirements-dev.txt` y `python -m playwright install chromium`.
 
 ---
 
@@ -410,10 +414,31 @@ La aplicación está desplegada y accesible públicamente en **Streamlit Communi
 | **Gestión de la API key** | Streamlit *Secrets* (nunca en el repositorio) |
 | **Estado** | 🟢 En línea |
 
-La aplicación arranca indexando los 6 documentos de `data/` (47 fragmentos), y desde la
-barra lateral se puede lanzar cualquiera de las 8 preguntas de ejemplo. Cada respuesta
-incluye un desplegable **"🔍 Cómo se obtuvo esta respuesta"** con la herramienta invocada,
-sus argumentos y el documento citado.
+**1. La aplicación en producción, con la base de conocimiento ya indexada**
+
+Los 6 documentos de `data/` se leen y vectorizan al arrancar: la barra lateral confirma los
+**47 fragmentos indexados**.
+
+![Aplicación desplegada en Streamlit Cloud](docs/capturas/01-app-desplegada.png)
+
+**2. El agente respondiendo una consulta real**
+
+Datos exactos recuperados del catálogo, con la línea `Fuente:` al cierre.
+
+![Respuesta del agente en producción](docs/capturas/02-respuesta-agente.png)
+
+**3. La traza de herramientas de cada respuesta**
+
+El desplegable *"Cómo se obtuvo esta respuesta"* revela que el agente eligió
+`consultar_catalogo` —la consulta estructurada— y no la búsqueda semántica, además del
+documento citado.
+
+![Traza de herramientas y fuentes](docs/capturas/03-traza-fuentes.png)
+
+> Estas capturas **se generan automáticamente** contra la URL pública con
+> [`scripts/capturar_evidencia.py`](scripts/capturar_evidencia.py), que abre la aplicación
+> con un navegador real, lanza la consulta y guarda las tres imágenes. Así la evidencia se
+> puede regenerar en cualquier momento y siempre refleja el estado desplegado.
 
 La transcripción completa de las 11 pruebas ejecutadas contra el agente está en
 [`docs/ejemplos_de_respuestas.md`](docs/ejemplos_de_respuestas.md).
@@ -452,7 +477,8 @@ challenge-alura-agente-vidasana/
 │   └── especialidades_y_tarifas_vidasana.csv
 │
 ├── docs/
-│   └── ejemplos_de_respuestas.md   # Transcripción de las 11 pruebas
+│   ├── ejemplos_de_respuestas.md   # Transcripción de las 11 pruebas
+│   └── capturas/                   # Evidencia del deploy (autogenerada)
 │
 ├── scripts/
 │   ├── generar_documentos.py    # Genera la base documental

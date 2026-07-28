@@ -1,0 +1,8 @@
+# Dependencias solo para desarrollo. No se instalan en el deploy.
+#   pip install -r requirements-dev.txt
+#   python -m playwright install chromium
+
+-r requirements.txt
+
+# Automatiza las capturas de evidencia contra la app en produccion.
+playwright>=1.40
