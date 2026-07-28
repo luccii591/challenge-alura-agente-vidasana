@@ -7,12 +7,47 @@ from __future__ import annotations
 
 import hashlib
 import html
+import os
+import sys
+from pathlib import Path
 
 import streamlit as st
 
-from src.agent import AgenteVidaSana, BaseDeConocimiento
-from src.config import DIRECTORIO_DATOS, NOMBRE_CLINICA
-from src.estilos import (
+# --------------------------------------------------------------------------- #
+# Recarga del código propio tras un despliegue
+# --------------------------------------------------------------------------- #
+# Streamlit Cloud vuelve a ejecutar `app.py` cuando cambia el repositorio, pero
+# conserva en `sys.modules` los módulos de `src` ya importados. Si un despliegue
+# añade una función a `src/`, el script nuevo se encuentra con el módulo viejo y
+# la aplicación queda caída con `ImportError` hasta que alguien la reinicia a
+# mano. Aquí se detecta ese desfase comparando una huella del código fuente y,
+# si cambió, se purgan los módulos para que se importen frescos.
+
+_DIRECTORIO_SRC = Path(__file__).resolve().parent / "src"
+_CLAVE_HUELLA = "VS_HUELLA_CODIGO"
+
+
+def _huella_del_codigo() -> str:
+    digest = hashlib.sha256()
+    for ruta in sorted(_DIRECTORIO_SRC.glob("*.py")):
+        estado = ruta.stat()
+        digest.update(ruta.name.encode("utf-8"))
+        digest.update(str(estado.st_size).encode("utf-8"))
+        digest.update(str(int(estado.st_mtime)).encode("utf-8"))
+    return digest.hexdigest()[:16]
+
+
+_huella_actual = _huella_del_codigo()
+CODIGO_RECARGADO = os.environ.get(_CLAVE_HUELLA) not in (None, _huella_actual)
+
+if os.environ.get(_CLAVE_HUELLA) != _huella_actual:
+    for _modulo in [n for n in list(sys.modules) if n == "src" or n.startswith("src.")]:
+        del sys.modules[_modulo]
+    os.environ[_CLAVE_HUELLA] = _huella_actual
+
+from src.agent import AgenteVidaSana, BaseDeConocimiento  # noqa: E402
+from src.config import DIRECTORIO_DATOS, NOMBRE_CLINICA  # noqa: E402
+from src.estilos import (  # noqa: E402
     AVISO_HTML,
     PIE_HTML,
     construir_css,
@@ -20,7 +55,7 @@ from src.estilos import (
     fuentes_html,
     paso_html,
 )
-from src.prompts import PREGUNTAS_DE_EJEMPLO
+from src.prompts import PREGUNTAS_DE_EJEMPLO  # noqa: E402
 
 st.set_page_config(
     page_title="Asistente VidaSana | Agente de IA",
@@ -33,6 +68,12 @@ st.set_page_config(
 # --------------------------------------------------------------------------- #
 # Tema
 # --------------------------------------------------------------------------- #
+
+# Si el código se recargó, los objetos cacheados pertenecen a las clases
+# antiguas: se descartan para reconstruirlos con el código nuevo.
+if CODIGO_RECARGADO:
+    st.cache_resource.clear()
+    st.session_state.pop("agente", None)
 
 st.session_state.setdefault("tema_oscuro", False)
 st.markdown(

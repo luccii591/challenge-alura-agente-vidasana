@@ -539,6 +539,19 @@ uso. `src/resiliencia.py` lee el `retryDelay` que sugiere la propia API, añade 
 aleatorio para que varios usuarios simultáneos no reintenten a la vez, y reintenta hasta 4
 veces. Durante las pruebas absorbió un límite de cuota real de forma transparente.
 
+### Sobrevivir al hot reload de Streamlit Cloud
+
+Streamlit Cloud vuelve a ejecutar `app.py` cuando cambia el repositorio, pero **conserva en
+`sys.modules` los módulos de `src` ya importados**. Si un despliegue añade una función a
+`src/`, el script nuevo se encuentra con el módulo antiguo y la aplicación queda caída con
+`ImportError` hasta que alguien la reinicia a mano — algo inaceptable en una app pública.
+
+`app.py` calcula una huella de los archivos de `src/` antes de importarlos y, si cambió
+respecto a la del proceso, purga esos módulos de `sys.modules` y limpia
+`st.cache_resource`. El despliegue se recupera solo. Está verificado reproduciendo el
+escenario: con el servidor en marcha, se añade una función nueva a un módulo ya cargado y
+la aplicación sigue operativa tras recargar.
+
 ### Streaming y reintentos: una trampa sutil
 
 `generate_content_stream()` devuelve un **generador perezoso**: la petición HTTP no ocurre
