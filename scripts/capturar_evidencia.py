@@ -88,6 +88,14 @@ def main() -> None:
         pagina.screenshot(path=str(ruta))
         print(f"  3/3  {ruta.name}")
 
+        print("Cambiando a modo oscuro...")
+        app.get_by_text("Modo oscuro", exact=False).click()
+        pagina.wait_for_timeout(3_500)
+
+        ruta = DESTINO / "04-modo-oscuro.png"
+        pagina.screenshot(path=str(ruta))
+        print(f"  4/4  {ruta.name}")
+
         navegador.close()
 
     print(f"\nCapturas guardadas en {DESTINO}")

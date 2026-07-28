@@ -138,7 +138,7 @@ documentos consultados.
 | Lectura de PDF | **`pypdf`** | Extracción de texto página por página |
 | Datos tabulares | **`pandas`** | Carga y consulta estructurada del CSV |
 | Índice vectorial | **`numpy`** | Similitud coseno sobre matriz normalizada |
-| Interfaz web | **`Streamlit`** | Chat, traza de fuentes y ejemplos |
+| Interfaz web | **`Streamlit`** | Chat, traza de fuentes, ejemplos y tema claro/oscuro |
 | Generación de PDFs | **`reportlab`** | Script reproducible de la base documental |
 | Configuración | **`python-dotenv`** | Gestión de la API key |
 | Deploy | **Streamlit Community Cloud** | Hospedaje público y gratuito |
@@ -441,6 +441,13 @@ documento citado.
 
 ![Traza de herramientas y fuentes](docs/capturas/03-traza-fuentes.png)
 
+**4. Modo oscuro**
+
+La interfaz incluye un interruptor de tema en la barra lateral. Ambas paletas se definen en
+`src/estilos.py` y se inyectan como variables CSS en cada render.
+
+![La aplicación en modo oscuro](docs/capturas/04-modo-oscuro.png)
+
 > Estas capturas **se generan automáticamente** contra la URL pública con
 > [`scripts/capturar_evidencia.py`](scripts/capturar_evidencia.py), que abre la aplicación
 > con un navegador real, lanza la consulta y guarda las tres imágenes. Así la evidencia se
@@ -493,6 +500,7 @@ challenge-alura-agente-vidasana/
 │
 └── src/
     ├── config.py                # Modelos, rutas y parámetros
+    ├── estilos.py               # Paletas clara/oscura y hoja de estilos
     ├── loaders.py               # Lectura de PDF/CSV y fragmentación
     ├── vectorstore.py           # Embeddings e índice por coseno
     ├── tools.py                 # Las 3 herramientas del agente
