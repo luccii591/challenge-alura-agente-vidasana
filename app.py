@@ -44,6 +44,12 @@ st.title("🩺 Asistente VidaSana")
 st.caption(
     f"Agente de IA que responde consultas sobre la documentación oficial de {NOMBRE_CLINICA}."
 )
+st.caption(
+    "⚠️ **Proyecto académico.** Clínica VidaSana es una empresa ficticia y toda la "
+    "documentación es material de demostración. Los nombres, precios, direcciones y "
+    "teléfonos son inventados: no corresponden a ningún establecimiento de salud real "
+    "ni deben usarse para tomar decisiones médicas o administrativas."
+)
 
 try:
     with st.spinner("Indexando la documentación de la clínica..."):

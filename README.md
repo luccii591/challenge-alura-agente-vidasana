@@ -16,6 +16,12 @@ documentación interna de una clínica, sin que nadie tenga que abrir un solo do
 
 </div>
 
+> [!NOTE]
+> **Clínica VidaSana es una empresa ficticia.** Toda la base documental de este repositorio
+> (políticas, tarifas, nombres de profesionales, direcciones y teléfonos) fue creada para
+> este proyecto académico y no corresponde a ningún establecimiento de salud real. El aviso
+> viaja también dentro de cada PDF y en la propia aplicación.
+
 ---
 
 ## 📋 Tabla de contenidos
@@ -81,7 +87,7 @@ flowchart TD
         PANDAS --> FILA["Cada fila → oración indexable"]
         CHUNK --> EMB["gemini-embedding-001<br/>vectores de 768 dim."]
         FILA --> EMB
-        EMB --> IDX[("🧠 Índice vectorial NumPy<br/>47 fragmentos")]
+        EMB --> IDX[("🧠 Índice vectorial NumPy<br/>52 fragmentos")]
     end
 
     subgraph CONSULTA["2 · CONSULTA (por cada pregunta)"]
@@ -159,7 +165,7 @@ con `scripts/generar_documentos.py`:
 | `05_Preguntas_Frecuentes_VidaSana.pdf` | PDF | FAQ de agendamiento, horarios, sedes, pagos |
 | `especialidades_y_tarifas_vidasana.csv` | CSV | 25 filas × 11 columnas: especialidad, profesional, sede, horario, tarifas, seguros |
 
-Al indexarse producen **47 fragmentos** vectorizados.
+Al indexarse producen **52 fragmentos** vectorizados.
 
 ---
 
@@ -417,7 +423,7 @@ La aplicación está desplegada y accesible públicamente en **Streamlit Communi
 **1. La aplicación en producción, con la base de conocimiento ya indexada**
 
 Los 6 documentos de `data/` se leen y vectorizan al arrancar: la barra lateral confirma los
-**47 fragmentos indexados**.
+**52 fragmentos indexados**.
 
 ![Aplicación desplegada en Streamlit Cloud](docs/capturas/01-app-desplegada.png)
 
@@ -501,7 +507,7 @@ challenge-alura-agente-vidasana/
 
 ### Por qué un índice NumPy y no FAISS o Chroma
 
-Con 47 fragmentos, una multiplicación matriz-vector sobre embeddings normalizados es
+Con 52 fragmentos, una multiplicación matriz-vector sobre embeddings normalizados es
 **exacta** e instantánea, mientras que FAISS o Chroma resuelven un problema —búsqueda
 aproximada sobre millones de vectores— que aquí no existe. La clase `IndiceVectorial`
 expone la misma interfaz `construir()` / `buscar()` que tendría un motor externo, así que

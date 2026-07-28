@@ -21,6 +21,18 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 RAIZ = Path(__file__).resolve().parent.parent
 DIRECTORIO_DATOS = RAIZ / "data"
 
+# Los PDFs viven en un repositorio publico y pueden descargarse sueltos, fuera
+# del contexto del README. El aviso viaja dentro de cada documento para que
+# nadie los confunda con la documentacion de un centro de salud real.
+AVISO_FICCION = (
+    "<b>DOCUMENTO FICTICIO — MATERIAL DE DEMOSTRACIÓN.</b> Clínica VidaSana S.A.C. es una "
+    "empresa inventada, creada como base de conocimiento para un proyecto académico del "
+    "programa Oracle Next Education (Challenge Alura Agente). Los nombres, direcciones, "
+    "teléfonos, correos, precios y políticas de este documento son ficticios: no "
+    "corresponden a ningún establecimiento de salud real ni deben usarse para tomar "
+    "decisiones médicas, legales o administrativas."
+)
+
 
 # --------------------------------------------------------------------------- #
 # Contenido de los documentos
@@ -491,6 +503,17 @@ def _estilos() -> dict[str, ParagraphStyle]:
             alignment=TA_JUSTIFY,
             spaceAfter=8,
         ),
+        "aviso": ParagraphStyle(
+            "AvisoVidaSana",
+            parent=base["BodyText"],
+            fontSize=8.5,
+            leading=12,
+            alignment=TA_JUSTIFY,
+            textColor="#7A2E2E",
+            backColor="#FBEDED",
+            borderPadding=8,
+            spaceAfter=18,
+        ),
     }
 
 
@@ -510,6 +533,7 @@ def generar_pdf(nombre_archivo: str, definicion: dict, estilos: dict) -> Path:
     elementos = [
         Paragraph(definicion["titulo"], estilos["titulo"]),
         Paragraph(definicion["subtitulo"], estilos["subtitulo"]),
+        Paragraph(AVISO_FICCION, estilos["aviso"]),
     ]
     for encabezado, parrafos in definicion["secciones"]:
         elementos.append(Paragraph(encabezado, estilos["seccion"]))
