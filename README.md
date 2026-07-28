@@ -5,7 +5,16 @@
 Agente de inteligencia artificial que responde en lenguaje natural preguntas sobre la
 documentación interna de una clínica, sin que nadie tenga que abrir un solo documento.
 
-**🔗 Aplicación en línea:** https://TU-APP.streamlit.app *(pendiente de completar tras el deploy)*
+<div align="center">
+
+### 🔗 [**Probar el agente en vivo → asistente-vidasana.streamlit.app**](https://asistente-vidasana.streamlit.app/)
+
+[![Desplegado en Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://asistente-vidasana.streamlit.app/)
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-green.svg)](LICENSE)
+
+</div>
 
 ---
 
@@ -391,13 +400,23 @@ que **se niega a inventar**. Estos tres casos se verifican en cada ejecución de
 
 La aplicación está desplegada y accesible públicamente en **Streamlit Community Cloud**:
 
-**🔗 https://TU-APP.streamlit.app** *(pendiente de completar tras el deploy)*
+### 🔗 https://asistente-vidasana.streamlit.app/
 
-![Aplicación desplegada](docs/capturas/01-app-desplegada.png)
+| | |
+|---|---|
+| **Plataforma** | Streamlit Community Cloud |
+| **Repositorio conectado** | `luccii591/challenge-alura-agente-vidasana` (rama `main`) |
+| **Archivo principal** | `app.py` |
+| **Gestión de la API key** | Streamlit *Secrets* (nunca en el repositorio) |
+| **Estado** | 🟢 En línea |
 
-![Respuesta del agente en producción](docs/capturas/02-respuesta-agente.png)
+La aplicación arranca indexando los 6 documentos de `data/` (47 fragmentos), y desde la
+barra lateral se puede lanzar cualquiera de las 8 preguntas de ejemplo. Cada respuesta
+incluye un desplegable **"🔍 Cómo se obtuvo esta respuesta"** con la herramienta invocada,
+sus argumentos y el documento citado.
 
-![Traza de herramientas y fuentes](docs/capturas/03-traza-fuentes.png)
+La transcripción completa de las 11 pruebas ejecutadas contra el agente está en
+[`docs/ejemplos_de_respuestas.md`](docs/ejemplos_de_respuestas.md).
 
 > **Nota sobre la plataforma.** El challenge sugiere Oracle Cloud (OCI), aclarando en el
 > material oficial que no es obligatorio: *"No, no es obligatorio hacer el deploy en OCI.
@@ -433,8 +452,7 @@ challenge-alura-agente-vidasana/
 │   └── especialidades_y_tarifas_vidasana.csv
 │
 ├── docs/
-│   ├── ejemplos_de_respuestas.md   # Transcripción de las 11 pruebas
-│   └── capturas/                   # Evidencia del deploy
+│   └── ejemplos_de_respuestas.md   # Transcripción de las 11 pruebas
 │
 ├── scripts/
 │   ├── generar_documentos.py    # Genera la base documental
