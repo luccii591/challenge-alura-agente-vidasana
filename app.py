@@ -6,18 +6,31 @@
 from __future__ import annotations
 
 import hashlib
+import html
 
 import streamlit as st
 
 from src.agent import AgenteVidaSana, BaseDeConocimiento
-from src.config import DIRECTORIO_DATOS, NOMBRE_AGENTE, NOMBRE_CLINICA
+from src.config import DIRECTORIO_DATOS, NOMBRE_CLINICA
+from src.estilos import AVISO_HTML, PIE_HTML, construir_css, encabezado_html
 from src.prompts import PREGUNTAS_DE_EJEMPLO
 
 st.set_page_config(
-    page_title=f"{NOMBRE_AGENTE} | Agente de IA",
+    page_title="Asistente VidaSana | Agente de IA",
     page_icon="🩺",
     layout="centered",
     initial_sidebar_state="expanded",
+)
+
+
+# --------------------------------------------------------------------------- #
+# Tema
+# --------------------------------------------------------------------------- #
+
+st.session_state.setdefault("tema_oscuro", False)
+st.markdown(
+    construir_css("oscuro" if st.session_state.tema_oscuro else "claro"),
+    unsafe_allow_html=True,
 )
 
 
@@ -71,17 +84,6 @@ def obtener_agente() -> AgenteVidaSana:
 # Arranque
 # --------------------------------------------------------------------------- #
 
-st.title("🩺 Asistente VidaSana")
-st.caption(
-    f"Agente de IA que responde consultas sobre la documentación oficial de {NOMBRE_CLINICA}."
-)
-st.caption(
-    "⚠️ **Proyecto académico.** Clínica VidaSana es una empresa ficticia y toda la "
-    "documentación es material de demostración. Los nombres, precios, direcciones y "
-    "teléfonos son inventados: no corresponden a ningún establecimiento de salud real "
-    "ni deben usarse para tomar decisiones médicas o administrativas."
-)
-
 try:
     with st.spinner("Indexando la documentación de la clínica..."):
         agente = obtener_agente()
@@ -94,31 +96,80 @@ except Exception as error:  # noqa: BLE001 - se muestra al usuario final
     )
     st.stop()
 
-if "mensajes" not in st.session_state:
-    st.session_state.mensajes = []
-if "pregunta_pendiente" not in st.session_state:
-    st.session_state.pregunta_pendiente = None
+st.session_state.setdefault("mensajes", [])
+st.session_state.setdefault("pregunta_pendiente", None)
+
+
+st.markdown(
+    encabezado_html(
+        titulo="Asistente VidaSana",
+        subtitulo=(
+            f"Agente de IA que responde consultas sobre la documentación oficial "
+            f"de {NOMBRE_CLINICA}."
+        ),
+        chips=[
+            (f"{agente.total_fragmentos} fragmentos indexados", True),
+            (f"{len(agente.documentos_indexados)} documentos", False),
+            ("RAG + function calling", False),
+            ("Google Gemini", False),
+        ],
+    ),
+    unsafe_allow_html=True,
+)
+st.markdown(AVISO_HTML, unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #
 # Barra lateral
 # --------------------------------------------------------------------------- #
 
+def dibujar_mensaje_usuario(texto: str) -> None:
+    """Pinta la burbuja del usuario con el marcador que engancha el estilo.
+
+    El texto se escapa porque se renderiza con HTML habilitado: sin ello,
+    cualquiera podría escribir etiquetas en el chat de la aplicación pública.
+    """
+    st.markdown(
+        f'<span class="vs-marca-usuario"></span>{html.escape(texto)}',
+        unsafe_allow_html=True,
+    )
+
+
+def dibujar_traza(traza: list[dict]) -> None:
+    """Muestra qué herramienta se usó y qué documentos se citaron."""
+    with st.expander("🔍 Cómo se obtuvo esta respuesta"):
+        for indice, paso in enumerate(traza):
+            st.markdown(f"**Herramienta:** `{paso['herramienta']}`")
+            if paso["argumentos"]:
+                st.json(paso["argumentos"], expanded=False)
+            for fuente in paso["fuentes"]:
+                st.markdown(f"📄 {fuente}")
+            if indice < len(traza) - 1:
+                st.markdown("---")
+
+
 with st.sidebar:
-    st.header("Sobre este agente")
+    st.toggle("🌙 Modo oscuro", key="tema_oscuro")
+
+    st.divider()
+
+    st.subheader("Sobre este agente")
     st.markdown(
         "Responde únicamente con base en la documentación interna de la clínica: "
         "**5 documentos PDF** de políticas y procedimientos más un **catálogo CSV** "
         "de especialidades y tarifas."
     )
 
-    st.metric("Fragmentos indexados", agente.total_fragmentos)
+    columna_a, columna_b = st.columns(2)
+    columna_a.metric("Fragmentos", agente.total_fragmentos)
+    columna_b.metric("Documentos", len(agente.documentos_indexados))
 
-    with st.expander("Documentos en la base de conocimiento"):
+    with st.expander("Ver base de conocimiento"):
         for documento in agente.documentos_indexados:
             st.markdown(f"- {documento}")
 
     st.divider()
+
     st.subheader("Preguntas de ejemplo")
     for indice, pregunta in enumerate(PREGUNTAS_DE_EJEMPLO):
         if st.button(pregunta, key=f"ejemplo_{indice}", use_container_width=True):
@@ -126,12 +177,13 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
+
     if st.button("🗑️ Limpiar conversación", use_container_width=True):
         st.session_state.mensajes = []
         agente.reiniciar()
         st.rerun()
 
-    st.caption("Challenge Alura Agente · ONE — Tech AI Builder")
+    st.markdown(PIE_HTML, unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -146,17 +198,14 @@ if not st.session_state.mensajes:
     )
 
 for mensaje in st.session_state.mensajes:
-    with st.chat_message(mensaje["rol"], avatar="🩺" if mensaje["rol"] == "assistant" else None):
-        st.markdown(mensaje["texto"])
-        if mensaje.get("traza"):
-            with st.expander("🔍 Cómo se obtuvo esta respuesta"):
-                for paso in mensaje["traza"]:
-                    st.markdown(f"**Herramienta:** `{paso['herramienta']}`")
-                    if paso["argumentos"]:
-                        st.json(paso["argumentos"], expanded=False)
-                    for fuente in paso["fuentes"]:
-                        st.markdown(f"📄 {fuente}")
-                    st.markdown("---")
+    es_usuario = mensaje["rol"] == "user"
+    with st.chat_message(mensaje["rol"], avatar="🙋" if es_usuario else "🩺"):
+        if es_usuario:
+            dibujar_mensaje_usuario(mensaje["texto"])
+        else:
+            st.markdown(mensaje["texto"])
+            if mensaje.get("traza"):
+                dibujar_traza(mensaje["traza"])
 
 
 # --------------------------------------------------------------------------- #
@@ -170,8 +219,8 @@ if st.session_state.pregunta_pendiente:
 
 if pregunta:
     st.session_state.mensajes.append({"rol": "user", "texto": pregunta})
-    with st.chat_message("user"):
-        st.markdown(pregunta)
+    with st.chat_message("user", avatar="🙋"):
+        dibujar_mensaje_usuario(pregunta)
 
     with st.chat_message("assistant", avatar="🩺"):
         with st.spinner("Consultando la documentación..."):
@@ -191,16 +240,8 @@ if pregunta:
             }
             for uso in respuesta.herramientas_usadas
         ]
-
         if traza:
-            with st.expander("🔍 Cómo se obtuvo esta respuesta"):
-                for paso in traza:
-                    st.markdown(f"**Herramienta:** `{paso['herramienta']}`")
-                    if paso["argumentos"]:
-                        st.json(paso["argumentos"], expanded=False)
-                    for fuente in paso["fuentes"]:
-                        st.markdown(f"📄 {fuente}")
-                    st.markdown("---")
+            dibujar_traza(traza)
 
     st.session_state.mensajes.append(
         {"rol": "assistant", "texto": respuesta.texto, "traza": traza}

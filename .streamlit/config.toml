@@ -1,8 +1,13 @@
+# Tema base de Streamlit. El aspecto final (y el modo oscuro) se resuelve en
+# `src/estilos.py`, que inyecta la hoja de estilos según el interruptor de la
+# barra lateral. Aquí solo se fija un punto de partida coherente con la paleta
+# clara para evitar un parpadeo al cargar.
 [theme]
-primaryColor = "#0E9F6E"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F1F5F9"
-textColor = "#1E293B"
+base = "light"
+primaryColor = "#0D9488"
+backgroundColor = "#F1F5F9"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F172A"
 
 [browser]
 gatherUsageStats = false
