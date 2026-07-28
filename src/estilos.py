@@ -94,13 +94,22 @@ html, body, [data-testid="stAppViewContainer"], [class*="css"] {
 [data-testid="stAppViewContainer"] {
   background: $fondo;
   color: var(--vs-texto);
-  position: relative;
+  /* `isolation` basta para crear el contexto de apilamiento que necesita la
+     aurora. No se toca `position`: Streamlit lo fija en `absolute` para ceñir
+     el contenedor a la altura de la ventana, y cambiarlo lo hace crecer con su
+     contenido, dejando la barra lateral sin scroll. */
   isolation: isolate;
 }
+/* La aurora se manda al fondo con z-index negativo dentro del contexto de
+   apilamiento que crea `isolation: isolate`. Es deliberado no elevar el
+   contenido con `position: relative`: la barra lateral de Streamlit usa
+   `position: fixed` para ceñirse a la altura de la ventana, y sobrescribir su
+   posicionamiento la hace crecer con su contenido, dejando sin efecto el
+   `overflow: auto` que le da scroll. */
 [data-testid="stAppViewContainer"]::before {
   content: "";
   position: fixed; inset: -20%;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   background:
     radial-gradient(38% 42% at 18% 22%, $aurora_a 0%, transparent 62%),
@@ -116,10 +125,7 @@ html, body, [data-testid="stAppViewContainer"], [class*="css"] {
   100% { transform: translate3d(-2%, 2.5%, 0) scale(1.04); }
 }
 
-[data-testid="stMain"], [data-testid="stSidebar"], [data-testid="stBottom"] {
-  position: relative; z-index: 1;
-}
-[data-testid="stHeader"] { background: transparent; z-index: 2; }
+[data-testid="stHeader"] { background: transparent; }
 [data-testid="stMain"] .block-container { padding-top: 2rem; max-width: 54rem; }
 
 [data-testid="stAppViewContainer"] p, [data-testid="stAppViewContainer"] li,
