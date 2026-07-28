@@ -1,0 +1,22 @@
+# Secretos
+.env
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Herramientas
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
