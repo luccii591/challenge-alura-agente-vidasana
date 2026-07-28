@@ -1,0 +1,10 @@
+# Normaliza los finales de línea del código en cualquier sistema operativo.
+* text=auto eol=lf
+
+# Los documentos fuente son binarios: git nunca debe reescribirlos.
+*.pdf binary
+*.png binary
+*.jpg binary
+
+# El CSV es la fuente de verdad del catálogo; se versiona sin conversiones.
+*.csv -text
