@@ -5,11 +5,12 @@
 
 from __future__ import annotations
 
+import hashlib
+
 import streamlit as st
 
 from src.agent import AgenteVidaSana, BaseDeConocimiento
-from src.config import NOMBRE_AGENTE, NOMBRE_CLINICA
-from src.loaders import huella_del_corpus
+from src.config import DIRECTORIO_DATOS, NOMBRE_AGENTE, NOMBRE_CLINICA
 from src.prompts import PREGUNTAS_DE_EJEMPLO
 
 st.set_page_config(
@@ -24,13 +25,36 @@ st.set_page_config(
 # Recursos cacheados
 # --------------------------------------------------------------------------- #
 
+def huella_del_corpus() -> str:
+    """Resume el contenido de `data/` para usarlo como clave de caché.
+
+    Vive aquí, y no en `src/`, a propósito. Streamlit Cloud vuelve a ejecutar
+    `app.py` cuando cambia el repositorio, pero conserva en `sys.modules` los
+    módulos de `src` ya importados: si este archivo importara una función
+    recién añadida a `src/`, se encontraría con la versión antigua del módulo y
+    fallaría con `ImportError` hasta que alguien reiniciase la app a mano.
+    Al definirla en el propio script que Streamlit recarga, el despliegue se
+    recupera solo.
+    """
+    digest = hashlib.sha256()
+
+    for ruta in sorted(DIRECTORIO_DATOS.glob("*")):
+        if ruta.suffix.lower() not in {".pdf", ".csv"}:
+            continue
+        estado = ruta.stat()
+        digest.update(ruta.name.encode("utf-8"))
+        digest.update(str(estado.st_size).encode("utf-8"))
+
+    return digest.hexdigest()[:16]
+
+
 @st.cache_resource(show_spinner=False)
 def cargar_base_de_conocimiento(huella: str) -> BaseDeConocimiento:
     """Lee los documentos y construye el índice vectorial una sola vez.
 
-    `huella` no se usa dentro de la función: es la clave de caché. Streamlit
-    puede recargar el código sin reiniciar el proceso, así que sin ella un
-    cambio en `data/` seguiría sirviendo el índice anterior.
+    `huella` no se usa dentro de la función: es la clave de caché. Sin ella, un
+    cambio en `data/` seguiría sirviendo el índice construido con la versión
+    anterior de los documentos.
     """
     return BaseDeConocimiento.construir()
 

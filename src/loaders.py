@@ -6,7 +6,6 @@ documentos fuente (PDF y CSV) para convertirlos en fragmentos indexables.
 
 from __future__ import annotations
 
-import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -179,28 +178,6 @@ def csv_a_fragmentos(df: pd.DataFrame, nombre_documento: str = "Catálogo de esp
 # --------------------------------------------------------------------------- #
 # Punto de entrada del módulo
 # --------------------------------------------------------------------------- #
-
-def huella_del_corpus(directorio: Path = DIRECTORIO_DATOS) -> str:
-    """Devuelve una huella del contenido de `data/`.
-
-    Sirve como clave de caché del índice vectorial. Streamlit puede recargar el
-    código de la aplicación sin reiniciar el proceso, y en ese caso un
-    `@st.cache_resource` sin clave seguiría sirviendo un índice construido con
-    documentos ya obsoletos. Al depender de esta huella, el índice se reconstruye
-    solo cuando la base documental realmente cambia.
-    """
-    digest = hashlib.sha256()
-
-    for ruta in sorted(directorio.glob("*")):
-        if ruta.suffix.lower() not in {".pdf", ".csv"}:
-            continue
-        estado = ruta.stat()
-        digest.update(ruta.name.encode("utf-8"))
-        digest.update(str(estado.st_size).encode("utf-8"))
-        digest.update(str(int(estado.st_mtime)).encode("utf-8"))
-
-    return digest.hexdigest()[:16]
-
 
 def cargar_corpus(directorio: Path = DIRECTORIO_DATOS) -> list[Fragmento]:
     """Carga todos los PDFs y el CSV de `data/` en una única lista de fragmentos."""
